@@ -27,10 +27,9 @@ void* worker(void* arg){
 }
 
 int init_socket() {
-  int sockfd, newsockfd, portno, clilen;
-  char buffer[256];
+  int sockfd,  portno;
   struct sockaddr_in serv_addr, cli_addr;
-  int n;
+
 
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
@@ -45,30 +44,41 @@ int init_socket() {
   return sockfd;
 }
 
+char** parse_message(char* message) {
+  char* result[2];
+  char* command = strtok(message, " ");
+  result[0] = command;
+  char* body = strtok(NULL, " ");
+  result[1] = body;
+  return result;
+}
+
 int main(void){
   int* id;
-  char msg[15];
-  struct cli_addr;
+  char msg[256];
+  char buffer[256];
+  struct sockaddr_in cli_addr;
+  int n, newsockfd, clilen;
 
-  sockfd = init_socket();
-
-  listen(sockfd,5);
-  clilen = sizeof(cli_addr);
-  newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-  if (newsockfd < 0)
-      error("ERROR on accept");
-  bzero(buffer,256);
-  n = read(newsockfd,buffer,255);
-  if (n < 0) printf("ERROR reading from socket");
-   printf("Here is the message: %s\n",buffer);
+  int sockfd = init_socket();
 
   while(1) {
-    scanf("%s", msg);
-    if(strcmp(msg, "ler") == 0) {
+    listen(sockfd,5);
+    clilen = sizeof(cli_addr);
+    newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+    if (newsockfd < 0) error("ERROR on accept");
+    bzero(buffer,256);
+    n = read(newsockfd,buffer,255);
+    if (n < 0) printf("ERROR reading from socket");
+    char** result = parse_message(buffer);
+    if(strcmp(result[0], "ler") == 0) {
       id = (int *) malloc(sizeof(int));
       *id = num_workers;
       pthread_create(&(workers[num_workers]), NULL, worker,(void *) id);
+        // pthread_join(workers[num_workers],NULL);
       num_workers++;
+      n = write(newsockfd,"OK",18);
+      if (n < 0) error("ERROR writing to socket");
     }
   }
 
