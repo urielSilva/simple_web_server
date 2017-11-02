@@ -34,8 +34,9 @@ int main(void){
   while(1) {
     listen(sockfd,5);
     int newsockfd = read_message(sockfd, &buffer);
-    char** result = parse_message(buffer);
-    if(strcmp(result[0], "ler") == 0) {
+    Message* message = parse_message(buffer);
+    puts(message->command);
+    if(strcmp(message->command, "ler") == 0) {
       id = (int *) malloc(sizeof(int));
       *id = num_workers;
       pthread_create(&(workers[num_workers]), NULL, worker,(void *) id);

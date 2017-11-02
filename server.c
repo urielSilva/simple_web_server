@@ -39,13 +39,16 @@ int init_socket() {
   return sockfd;
 }
 
-char** parse_message(char* message) {
+Message* parse_message(char* msg) {
+  Message* message = (Message *) malloc(sizeof(Message));
   char* result[2];
-  char* command = strtok(message, " ");
-  result[0] = command;
+  char* command = strtok(msg, " ");
   char* body = strtok(NULL, " ");
-  result[1] = body;
-  return result;
+  strcpy(message->command, command);
+  strcpy(message->body, body);
+  puts(message->command);
+  puts(message->body);
+  return message;
 }
 
 int read_message(int sockfd, char* buffer) {
