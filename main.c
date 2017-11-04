@@ -13,17 +13,29 @@ pthread_t workers[10];
 int num_workers = 0;
 
 
-void* worker(void* arg){
-  int i = *((int*)arg);
-  printf("worker %d\n", i);
+void* worker(void* msg){
+  Message* message = ((Message*)msg);
+  printf("worker %d command: %s body: %s\n", message->id, message->command, message->body);
   while(1){
-    printf("worker %d\n", i);
     sleep(5);
   }
 }
 
+void create_worker(Message* message) {
+  message->id = num_workers;
+  pthread_create(&(workers[num_workers]), NULL, worker,(void *) message);
+  num_workers++;
+}
+
+int is_read(char* command) {
+  return strcmp(command, "read") == 0;
+}
+
+int is_write(char* command) {
+  return strcmp(command, "write") == 0;
+}
+
 int main(void){
-  int* id;
   char msg[256];
   char buffer[256];
   struct sockaddr_in cli_addr;
@@ -35,13 +47,9 @@ int main(void){
     listen(sockfd,5);
     int newsockfd = read_message(sockfd, &buffer);
     Message* message = parse_message(buffer);
-    puts(message->command);
-    if(strcmp(message->command, "ler") == 0) {
-      id = (int *) malloc(sizeof(int));
-      *id = num_workers;
-      pthread_create(&(workers[num_workers]), NULL, worker,(void *) id);
-        // pthread_join(workers[num_workers],NULL);
-      num_workers++;
+    if(is_read(message->command) || is_write(message->command)) {
+      printf("ao");
+      create_worker(message);
     }
     write_response(newsockfd);
   }

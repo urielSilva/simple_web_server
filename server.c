@@ -6,7 +6,7 @@
 #include <netinet/in.h>
 
 typedef struct message {
-  int* id;
+  int id;
   char command[10];
   char body[100];
 } Message;
@@ -44,10 +44,8 @@ Message* parse_message(char* msg) {
   char* result[2];
   char* command = strtok(msg, " ");
   char* body = strtok(NULL, " ");
-  strcpy(message->command, command);
-  strcpy(message->body, body);
-  puts(message->command);
-  puts(message->body);
+  if(command != NULL) strcpy(message->command, command);
+  if(body != NULL) strcpy(message->body, body);
   return message;
 }
 
