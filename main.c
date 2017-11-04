@@ -27,12 +27,8 @@ void create_worker(Message* message) {
   num_workers++;
 }
 
-int is_read(char* command) {
-  return strcmp(command, "read") == 0;
-}
-
-int is_write(char* command) {
-  return strcmp(command, "write") == 0;
+int is_valid_command(char* command) {
+  return (strcmp(command, "write") == 0 || strcmp(command, "read") == 0);
 }
 
 int main(void){
@@ -45,13 +41,15 @@ int main(void){
 
   while(1) {
     listen(sockfd,5);
-    int newsockfd = read_message(sockfd, &buffer);
+    int newsockfd = read_message(sockfd, buffer);
     Message* message = parse_message(buffer);
-    if(is_read(message->command) || is_write(message->command)) {
-      printf("ao");
+    if(is_valid_command(message->command)) {
       create_worker(message);
+      write_response(newsockfd, "OK.");
+    } else {
+      write_response(newsockfd, "Invalid command.");
     }
-    write_response(newsockfd);
+
   }
 
 

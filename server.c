@@ -16,8 +16,8 @@ void error(char *msg) {
     exit(0);
 }
 
-void write_response(int socket) {
-  int n = write(socket, "OK", 18);
+void write_response(int socket, char* response) {
+  int n = write(socket, response, 18);
   if (n < 0) error("ERROR writing to socket");
 }
 
@@ -60,4 +60,5 @@ int read_message(int sockfd, char* buffer) {
   n = read(newsockfd,buffer,255);
   if (n < 0) printf("ERROR reading from socket");
   return newsockfd;
+
 }
