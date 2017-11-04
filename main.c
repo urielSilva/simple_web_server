@@ -17,19 +17,22 @@ int num_workers = 0;
 int contador;
 
 void* writer(void* msg){
-  while(1){
-		pthread_mutex_lock(&vez);
-		pthread_mutex_lock(&bd);
-
-		sleep(3);
-		printf("Finalizou escrita!\n");
-		pthread_mutex_unlock(&bd);
-		pthread_mutex_unlock(&vez);
-		sleep(3);
-	}
+  Message* message = (Message *) msg;
+	pthread_mutex_lock(&vez);
+	pthread_mutex_lock(&bd);
+  printf("escrevendo %s\n", message->body);
+  FILE* fp = fopen(FILE_NAME, "a+");
+  fprintf(fp, "%s", message->body);
+  fclose(fp);
+  printf("Finalizou escrita!\n");
+	sleep(3);
+	pthread_mutex_unlock(&bd);
+	pthread_mutex_unlock(&vez);
+	sleep(3);
 }
 
 void* reader(void* msg){
+  Message* message = (Message *) msg;
   while(1){
 		pthread_mutex_lock(&vez);
 		pthread_mutex_lock(&leitores);
@@ -40,7 +43,12 @@ void* reader(void* msg){
 		}
 		pthread_mutex_unlock(&leitores);
 		pthread_mutex_unlock(&vez);
-		printf("Lendo...\n");
+    printf("escrevendo %s\n", message->body);
+    FILE* fp = fopen(FILE_NAME, "r");
+    char body[10];
+    fscanf(fp, "%s", body);
+    fclose(fp);
+    printf("Leitura: %s!\n", body);
 		sleep(5);
 		pthread_mutex_lock(&leitores);
 		contador--;
