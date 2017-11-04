@@ -18,8 +18,8 @@ int contador;
 
 void* writer(void* msg){
   Message* message = (Message *) msg;
-	pthread_mutex_lock(&vez);
 	pthread_mutex_lock(&bd);
+  sleep(5);
   printf("escrevendo %s\n", message->body);
   FILE* fp = fopen(FILE_NAME, "a+");
   fprintf(fp, "%s", message->body);
@@ -27,38 +27,20 @@ void* writer(void* msg){
   printf("Finalizou escrita!\n");
 	sleep(3);
 	pthread_mutex_unlock(&bd);
-	pthread_mutex_unlock(&vez);
-	sleep(3);
 }
 
 void* reader(void* msg){
   Message* message = (Message *) msg;
-  while(1){
-		pthread_mutex_lock(&vez);
-		pthread_mutex_lock(&leitores);
-		contador++;
-		if (contador == 1)
-		{
-			pthread_mutex_lock(&bd);
-		}
-		pthread_mutex_unlock(&leitores);
-		pthread_mutex_unlock(&vez);
-    printf("escrevendo %s\n", message->body);
+  sleep(5);
+		pthread_mutex_lock(&bd);
     FILE* fp = fopen(FILE_NAME, "r");
     char body[10];
     fscanf(fp, "%s", body);
     fclose(fp);
     printf("Leitura: %s!\n", body);
+    pthread_mutex_unlock(&bd);
 		sleep(5);
-		pthread_mutex_lock(&leitores);
-		contador--;
-		if (contador == 0)
-		{
-			pthread_mutex_unlock(&bd);
-		}
 		printf("Finalizou leitura!\n");
-		pthread_mutex_unlock(&leitores);
-	}
 }
 
 void create_worker(Message* message) {
