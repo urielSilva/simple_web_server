@@ -6,29 +6,65 @@
 #include <netinet/in.h>
 #include "server.c"
 
-pthread_mutex_t lock_num_leitores = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lock_bd = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lock_vez = PTHREAD_MUTEX_INITIALIZER;
+
+#define FILE_NAME "data.txt"
+pthread_mutex_t leitores = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t bd = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t vez = PTHREAD_MUTEX_INITIALIZER;
 pthread_t workers[10];
+char* db_value[10];
 int num_workers = 0;
+int contador;
 
-
-void* worker(void* msg){
-  Message* message = ((Message*)msg);
-  printf("worker %d command: %s body: %s\n", message->id, message->command, message->body);
+void* writer(void* msg){
   while(1){
-    sleep(5);
-  }
+		pthread_mutex_lock(&vez);
+		pthread_mutex_lock(&bd);
+
+		sleep(3);
+		printf("Finalizou escrita!\n");
+		pthread_mutex_unlock(&bd);
+		pthread_mutex_unlock(&vez);
+		sleep(3);
+	}
+}
+
+void* reader(void* msg){
+  while(1){
+		pthread_mutex_lock(&vez);
+		pthread_mutex_lock(&leitores);
+		contador++;
+		if (contador == 1)
+		{
+			pthread_mutex_lock(&bd);
+		}
+		pthread_mutex_unlock(&leitores);
+		pthread_mutex_unlock(&vez);
+		printf("Lendo...\n");
+		sleep(5);
+		pthread_mutex_lock(&leitores);
+		contador--;
+		if (contador == 0)
+		{
+			pthread_mutex_unlock(&bd);
+		}
+		printf("Finalizou leitura!\n");
+		pthread_mutex_unlock(&leitores);
+	}
 }
 
 void create_worker(Message* message) {
   message->id = num_workers;
-  pthread_create(&(workers[num_workers]), NULL, worker,(void *) message);
+  int n;
+  if(strcmp(message->command, "write") == 0) {
+    printf("criei um writer\n");
+    n = pthread_create(&(workers[num_workers]), NULL, writer,(void *) message);
+  } else if(strcmp(message->command, "read") == 0) {
+    printf("criei um reader\n");
+    n = pthread_create(&(workers[num_workers]), NULL, reader,(void *) message);
+  }
+  printf("erro: %d\n", n);
   num_workers++;
-}
-
-int is_valid_command(char* command) {
-  return (strcmp(command, "write") == 0 || strcmp(command, "read") == 0);
 }
 
 int main(void){

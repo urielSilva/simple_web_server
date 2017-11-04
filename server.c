@@ -21,6 +21,10 @@ void write_response(int socket, char* response) {
   if (n < 0) error("ERROR writing to socket");
 }
 
+int is_valid_command(char* command) {
+  return (strcmp(command, "write") == 0 || strcmp(command, "read") == 0);
+}
+
 int init_socket() {
   int sockfd,  portno;
   struct sockaddr_in serv_addr, cli_addr;
