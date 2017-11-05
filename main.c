@@ -4,17 +4,20 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "barrier.c"
 #include "server.c"
 
 
 #define FILE_NAME "data.txt"
 pthread_mutex_t leitores = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t bd = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t contador = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t vez = PTHREAD_MUTEX_INITIALIZER;
+pthread_barrier_t barrier;
 pthread_t workers[10];
 char* db_value[10];
 int num_workers = 0;
-int contador;
+int existe_clearer = 0;
 
 void* writer(void* msg){
   Message* message = (Message *) msg;
@@ -24,9 +27,13 @@ void* writer(void* msg){
   FILE* fp = fopen(FILE_NAME, "a+");
   fprintf(fp, "%s", message->body);
   fclose(fp);
-  printf("Finalizou escrita!\n");
 	sleep(3);
 	pthread_mutex_unlock(&bd);
+  pthread_mutex_lock(&contador);
+  num_workers--;
+  printf("Finalizou escrita, num workers: %d!\n", num_workers);
+  pthread_mutex_unlock(&contador);
+  if(existe_clearer) pthread_barrier_wait(&barrier);
 }
 
 void* reader(void* msg){
@@ -40,7 +47,26 @@ void* reader(void* msg){
     printf("Leitura: %s!\n", body);
     pthread_mutex_unlock(&bd);
 		sleep(5);
-		printf("Finalizou leitura!\n");
+    pthread_mutex_lock(&contador);
+    num_workers--;
+    printf("Finalizou leitura, num workers: %d!\n", num_workers);
+    pthread_mutex_unlock(&contador);
+    if(existe_clearer) pthread_barrier_wait(&barrier);
+}
+
+void* clearer(void* msg){
+  pthread_barrier_init(&barrier, NULL, num_workers);
+  printf("VOU PARAR NA BARREIRA COM %d\n", num_workers);
+  pthread_barrier_wait(&barrier);
+  printf("Limpando o arquivo.\n");
+  FILE* fp = fopen(FILE_NAME, "w");
+  fclose(fp);
+  pthread_mutex_lock(&contador);
+  printf("SAI DA BARREIRA\n");
+  num_workers--;
+  existe_clearer = 0;
+  pthread_mutex_unlock(&contador);
+  sleep(2);
 }
 
 void create_worker(Message* message) {
@@ -52,6 +78,10 @@ void create_worker(Message* message) {
   } else if(strcmp(message->command, "read") == 0) {
     printf("criei um reader\n");
     n = pthread_create(&(workers[num_workers]), NULL, reader,(void *) message);
+  } else if(strcmp(message->command, "clear") == 0) {
+    existe_clearer = 1;
+    printf("criei um clear\n");
+    n = pthread_create(&(workers[num_workers]), NULL, clearer,(void *) message);
   }
   printf("erro: %d\n", n);
   num_workers++;

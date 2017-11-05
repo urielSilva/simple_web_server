@@ -22,7 +22,7 @@ void write_response(int socket, char* response) {
 }
 
 int is_valid_command(char* command) {
-  return (strcmp(command, "write") == 0 || strcmp(command, "read") == 0);
+  return (strcmp(command, "write") == 0 || strcmp(command, "read") == 0 || strcmp(command, "clear") == 0);
 }
 
 int init_socket() {
