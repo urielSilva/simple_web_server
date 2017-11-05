@@ -12,12 +12,14 @@
 pthread_mutex_t leitores = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t bd = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t counter = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t vez = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t wait_clearer = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t clearer_cond = PTHREAD_COND_INITIALIZER;
 pthread_barrier_t barrier;
 pthread_t workers[10];
 char* db_value[10];
 int num_workers = 0;
+int num_leitores = 0;
 int clearer_exists = 0;
 
 void* writer(void* msg){
@@ -28,6 +30,7 @@ void* writer(void* msg){
     pthread_cond_wait(&clearer_cond, &wait_clearer);
   }
   pthread_mutex_unlock(&wait_clearer);
+  pthread_mutex_lock(&vez);
 	pthread_mutex_lock(&bd);
   printf("escrevendo %s\n", message->body);
   FILE* fp = fopen(FILE_NAME, "a+");
@@ -35,6 +38,7 @@ void* writer(void* msg){
   fclose(fp);
 	sleep(3);
 	pthread_mutex_unlock(&bd);
+  pthread_mutex_unlock(&vez);
   pthread_mutex_lock(&counter);
   num_workers--;
   printf("Finalizou escrita, num workers: %d!\n", num_workers);
@@ -50,7 +54,14 @@ void* reader(void* msg){
     pthread_cond_wait(&clearer_cond, &wait_clearer);
   }
   pthread_mutex_unlock(&wait_clearer);
-	pthread_mutex_lock(&bd);
+  pthread_mutex_lock(&vez);
+  pthread_mutex_lock(&leitores);
+  num_leitores++;
+  if (num_leitores == 1) {
+    pthread_mutex_lock(&bd);
+  }
+  pthread_mutex_unlock(&leitores);
+  pthread_mutex_unlock(&vez);
   FILE* fp = fopen(FILE_NAME, "r");
   char body[10];
   fscanf(fp, "%s", body);
@@ -60,8 +71,15 @@ void* reader(void* msg){
   sleep(5);
   pthread_mutex_lock(&counter);
   num_workers--;
-  printf("Finalizou leitura, num workers: %d!\n", num_workers);
   pthread_mutex_unlock(&counter);
+  printf("Finalizou leitura, num workers: %d!\n", num_workers);
+  pthread_mutex_lock(&leitores);
+  num_leitores--;
+  if (num_leitores == 0) {
+    pthread_mutex_unlock(&num_leitores);
+  }
+  printf("Finalizou leitura!\n");
+  pthread_mutex_unlock(&leitores);
   if(clearer_exists) pthread_barrier_wait(&barrier);
 }
 
