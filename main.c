@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,8 +17,10 @@ pthread_mutex_t vez = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t wait_clearer = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t clearer_cond = PTHREAD_COND_INITIALIZER;
 pthread_barrier_t barrier;
-pthread_t workers[10];
+pthread_t workers[100];
+sem_t * semaphore;
 char* db_value[10];
+int max_workers = 5;
 int num_workers = 0;
 int num_leitores = 0;
 int clearer_exists = 0;
@@ -47,10 +50,11 @@ void* writer(void* msg){
 }
 
 void* reader(void* msg){
+  sem_wait(semaphore);
   Message* message = (Message *) msg;
   pthread_mutex_lock(&wait_clearer);
   while(clearer_exists) {
-    printf("VOU ESPERAR O CLEARER\n");
+    printf("Esperando limpeza do arquivo.\n");
     pthread_cond_wait(&clearer_cond, &wait_clearer);
   }
   pthread_mutex_unlock(&wait_clearer);
@@ -78,27 +82,28 @@ void* reader(void* msg){
   if (num_leitores == 0) {
     pthread_mutex_unlock(&num_leitores);
   }
-  printf("Finalizou leitura!\n");
   pthread_mutex_unlock(&leitores);
   if(clearer_exists) pthread_barrier_wait(&barrier);
+  sem_post(semaphore);
 }
 
 void* clearer(void* msg){
+
   pthread_barrier_init(&barrier, NULL, num_workers);
-  printf("VOU PARAR NA BARREIRA COM %d\n", num_workers);
   sleep(4);
   pthread_barrier_wait(&barrier);
   printf("Limpando o arquivo.\n");
   FILE* fp = fopen(FILE_NAME, "w");
   fclose(fp);
   pthread_mutex_lock(&counter);
-  printf("SAI DA BARREIRA\n");
   num_workers--;
   clearer_exists = 0;
   pthread_mutex_unlock(&counter);
-  printf("LIBERANDO A GALERA\n");
   pthread_cond_broadcast(&clearer_cond);
+}
 
+void* set_max(void* msg) {
+  printf("oi");
 }
 
 void create_worker(Message* message) {
@@ -111,6 +116,9 @@ void create_worker(Message* message) {
   } else if(strcmp(message->command, "clear") == 0) {
     clearer_exists = 1;
     n = pthread_create(&(workers[num_workers]), NULL, clearer,(void *) message);
+  } else if(strcmp(message->command, "set_max") == 0) {
+    sem_unlink("semaphore");
+    semaphore = sem_open("semaphore", O_CREAT, 0644, atoi(message->body));
   }
   num_workers++;
 }
@@ -122,6 +130,8 @@ int main(void){
   int n, newsockfd, clilen;
 
   int sockfd = init_socket();
+  sem_unlink("semaphore");
+  semaphore = sem_open("semaphore", O_CREAT, 0644, max_workers);
 
   while(1) {
     listen(sockfd,5);
@@ -135,25 +145,6 @@ int main(void){
     }
 
   }
-
-
-  // for(i = 0; i < 5; i++){
-  //   id = (int *) malloc(sizeof(int));
-  //   *i  d = i;
-  //   pthread_create(&(leitores[i]),NULL,escrever,id);
-  // }
-
-  // *id = 0;
-  // for(i = 0; i < 5; i++){
-  //   id = (int *) malloc(sizeof(int));
-  //   *id = i + 6;
-  //   pthread_create(&(escritores[i]),NULL,ler,id);
-  // }
-
-  // for(i = 0; i < 5; i++){
-  //   pthread_join(escritores[i],NULL);
-  //   pthread_join(leitores[i],NULL);
-  // }
 
   return 0;
 }
