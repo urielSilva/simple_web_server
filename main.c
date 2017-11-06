@@ -29,13 +29,13 @@ void* writer(void* msg){
   Message* message = (Message *) msg;
   pthread_mutex_lock(&wait_clearer);
   while(clearer_exists) {
-    printf("VOU ESPERAR O CLEARER\n");
+    printf("Esperando limpeza do arquivo.\n");
     pthread_cond_wait(&clearer_cond, &wait_clearer);
   }
   pthread_mutex_unlock(&wait_clearer);
   pthread_mutex_lock(&vez);
 	pthread_mutex_lock(&bd);
-  printf("escrevendo %s\n", message->body);
+  printf("Escrevendo: %s\n", message->body);
   FILE* fp = fopen(FILE_NAME, "a+");
   fprintf(fp, "%s", message->body);
   fclose(fp);
@@ -44,7 +44,6 @@ void* writer(void* msg){
   pthread_mutex_unlock(&vez);
   pthread_mutex_lock(&counter);
   num_workers--;
-  printf("Finalizou escrita, num workers: %d!\n", num_workers);
   pthread_mutex_unlock(&counter);
   if(clearer_exists) pthread_barrier_wait(&barrier);
 }
@@ -76,7 +75,6 @@ void* reader(void* msg){
   pthread_mutex_lock(&counter);
   num_workers--;
   pthread_mutex_unlock(&counter);
-  printf("Finalizou leitura, num workers: %d!\n", num_workers);
   pthread_mutex_lock(&leitores);
   num_leitores--;
   if (num_leitores == 0) {
@@ -100,10 +98,6 @@ void* clearer(void* msg){
   clearer_exists = 0;
   pthread_mutex_unlock(&counter);
   pthread_cond_broadcast(&clearer_cond);
-}
-
-void* set_max(void* msg) {
-  printf("oi");
 }
 
 void create_worker(Message* message) {
